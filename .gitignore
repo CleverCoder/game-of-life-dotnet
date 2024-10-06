@@ -1,0 +1,64 @@
+﻿# Ignore build output directories
+bin/
+obj/
+
+# Ignore user-specific files
+*.user
+*.userosscache
+*.suo
+
+# Ignore Rider and Visual Studio settings
+.idea/
+.vscode/
+.vs/
+
+# Ignore compiled binaries and packages
+*.dll
+*.exe
+*.so
+*.dylib
+*.log
+*.pyc
+*.pyo
+*.db
+
+# Ignore NuGet packages directory
+packages/
+*.nupkg
+
+# Ignore JetBrains Rider project files
+.idea/
+*.DotSettings.user
+
+# Ignore build artifacts
+**/[Dd]ebug/
+**/[Rr]elease/
+*.log
+
+# Ignore Publish output
+**/publish/
+**/PublishedOutput/
+
+# Ignore crash reports and temporary files
+hs_err_pid*
+crash.log
+replay_pid*
+
+# Ignore generated files
+*.generated.*
+*.gen.cs
+*.g.cs
+*.Designer.cs
+
+# Ignore Resharper files
+resharper/
+*.DotSettings
+
+# Ignore Dotnet CLI related items
+.dotnet/
+
+# Ignore User Secrets
+secrets.json
+
+# Ignore test result output
+TestResults/

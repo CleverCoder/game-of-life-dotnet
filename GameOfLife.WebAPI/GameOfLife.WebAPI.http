@@ -1,0 +1,56 @@
+### Create a new 10x10 board as int array
+
+GET {{GameOfLife.WebAPI_BaseURL}}/grid/create-int-array?width=10&height=10&seed={{GameOfLife.RandomSeed}}
+
+> {%
+    client.test("10x10 Grid Matches Expectation", function () {
+        const expected = "[[0,0,1,1,1,1,0,1,0,1],[0,0,0,0,0,1,0,1,1,0],[0,1,0,1,1,1,1,1,0,0],[1,0,1,0,0,1,0,0,0,0],[1,0,0,0,1,0,0,1,0,1],[1,1,0,0,0,1,1,0,1,0],[0,0,0,0,1,0,1,1,1,0],[1,1,0,0,1,1,0,0,0,0],[0,1,1,1,1,0,1,0,0,1],[0,1,1,0,0,0,0,0,0,1]]";
+        const actual = JSON.stringify(response.body);
+
+        client.log("Expected: " + expected);
+        client.log("Actual: " + actual);
+
+        client.assert(expected === actual, "Response body is incorrect");
+    });
+%}
+
+### Generate next state for 10x10 int array
+
+POST {{GameOfLife.WebAPI_BaseURL}}/grid/generate-next
+
+
+### Generate next state for 20x20 packed grid
+
+POST {{GameOfLife.WebAPI_BaseURL}}/grid/generate-next
+Content-Type: application/json
+
+{
+  "width": 20,
+  "height": 20,
+  "packedState": "nxX052OLjJS6TjZkglp1sY8o1a08grnuFAHbntSQy2Q1DRArPfvaaPME8qqH9l0v95k="
+}
+
+
+
+### Create new game with packed data
+
+POST {{GameOfLife.WebAPI_BaseURL}}/game/create
+Content-Type: application/json
+
+{
+  "width":10,
+  "height":10,
+  "packedData":"M+21ohBkDyEErpJxCQ=="
+}
+
+### Get List of Saved Games
+
+GET {{GameOfLife.WebAPI_BaseURL}}/game/list
+
+### Load a saved game by id
+
+GET {{GameOfLife.WebAPI_BaseURL}}/game/load?includeIntArray=true&gameId=7efbf9a5-0ff6-4d7b-8e8f-93b373c2c430
+
+### Get final game state for a saved game by id
+
+GET {{GameOfLife.WebAPI_BaseURL}}/game/final-state?maxSteps=2000&gameId=7ce2abbc-644a-4bfc-ba4a-cf5a4e61c34e
