@@ -3,19 +3,27 @@ import GameBoard from "./GameBoard.tsx";
 import {
   computeNextGeneration,
   createNewGame,
-  generateNewBoard,
+  generateNewBoard, getFinalState,
   loadGame,
   loadGameList
 } from "./services/GameService.ts";
+import {SavedGame} from "./api";
+import {base64ToUint8Array, unpackBase64Grid, unpackGrid} from "./utils/board-utils.ts";
 
 const App = () => {
   const [rows, setRows] = useState(100);
   const [cols, setCols] = useState(100);
   const [grid, setGrid] = useState<boolean[][]>([]);
+
   const [updateSpeed, setUpdateSpeed] = useState(10); // Default speed value
   const [gameList, setGameList] = useState<string[]>([]); // List of saved games
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
+
+  const [savedGame, setSavedGame] = useState<SavedGame | null>(null);
+  const [finalStateResult, setFinalStateResult] = useState<string|null>(null);
+  const [maxStepsForFinalState, setMaxStepsForFinalState] = useState(1000);
 
   const updateIntervalMsRef = useRef<number>(1000 / 10);
   const updateSpeedSliderRef = useRef<number>(50);
@@ -23,6 +31,7 @@ const App = () => {
   const gridRef = useRef(grid);
   const timeoutRef = useRef<number | null>(null);
   const isPlayingRef = useRef(isPlaying);
+  const [enableLoopSourceDetection, setEnableLoopSourceDetection] = useState<boolean>(false)
 
   // Sync gridRef with grid state
   useEffect(() => {
@@ -34,22 +43,41 @@ const App = () => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Randomize the board
+  function showNotification(message: string) {
+    setNotificationMessage(message);
+    setTimeout(() => {
+      setNotificationMessage(null);
+    }, 3000);
+  }
+
   async function onRandomizeBoard() {
+    setSavedGame(null);
     const newBoard = await generateNewBoard(rows, cols);
     setGrid(newBoard);
   }
 
-  // Load game list
   async function onLoadGameList() {
     const games = await loadGameList();
     setGameList(games);
   }
 
-  // Stub to load game when clicked
   const onLoadGame = async (gameId: string) => {
-    const gridData = await loadGame(gameId);
-    setGrid(gridData!);
+    const sg = await loadGame(gameId);
+
+    if (!sg) {
+      showNotification("Failed to load game");
+      return;
+    }
+
+    setSavedGame(sg);
+
+
+    const byteArray = base64ToUint8Array(sg.grid!.packedData!);
+    const grid = unpackGrid(byteArray, sg.grid!.height!, sg.grid!.width!);
+
+    setGrid(grid);
+    setRows(grid!.length);
+    setCols(grid![0].length);
   };
 
   // Compute the next generation
@@ -69,7 +97,10 @@ const App = () => {
   // Create a new game
   async function onCreateNewGame() {
     const response = await createNewGame(grid);
-
+    if (response) {
+      showNotification("Game created successfully");
+      await onLoadGameList();
+    }
 
 
     await onLoadGameList();
@@ -98,14 +129,36 @@ const App = () => {
     updateIntervalMsRef.current = 1000 / value;
   };
 
+  async function onGetFinalState() {
+    if (!savedGame) return;
+
+    setLoading(true);
+    setFinalStateResult(null);
+
+    const result = await getFinalState(savedGame.id!, maxStepsForFinalState, enableLoopSourceDetection);
+
+    let message = `Steps executed: ${result?.stepCount}. `;
+    message += result!.errorMessage ? `Final state not reached: ${result?.errorMessage}` : 'Final state reached!';
+    if (result?.loopDetectStep) {
+      message += ` Loop detected from source step ${result.loopDetectStep}.`;
+    }
+    setFinalStateResult(message);
+
+    if (result?.grid?.packedData) {
+      setGrid(unpackBase64Grid(result.grid.packedData, result.grid.width!, result.grid.height!));
+    }
+
+    setLoading(false);
+  }
+
   return (
     <div className="flex h-screen p-4">
       <div className="w-1/3 p-4 bg-blue-950 shadow-lg rounded-lg">
         <div className="card bg-blue-900">
           <div className="card-body">
-            <h2 className="card-title">Initialize New Game</h2>
-            <p className="card-text">Generate a new board or step through the game state without affecting saved games.</p>
-            <div className="card-actions justify-end">
+            <h2 className="card-title">Current Board Operations</h2>
+
+            <div className="flex-col">
               <label className="mr-2">Board Size:</label>
               <input
                 type="number"
@@ -153,24 +206,26 @@ const App = () => {
                 />
                 <span className="ml-2">{updateSpeed}</span>
               </div>
-            </div>
+
+             </div>
           </div>
         </div>
 
-        <div className="card bg-blue-900 mt-2">
+        <div className="card bg-gray-800 mt-2">
           <div className="card-body">
-            <h2 className="card-title">Game Controls</h2>
-            <p className="card-text">Create a new saved game based on the current board state and interact with saved games.</p>
+            <h2 className="card-title">Saved Board Controls</h2>
+            <p className="card-text">Create a new saved board based on the current state.</p>
 
             <button
               onClick={onCreateNewGame}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2 w-1/2 content-end"
               disabled={loading}
             >
-              Create Game
+              Save Board
             </button>
 
             {/* List of Saved Games */}
+            <b className="mt-2">Saved Boards (Click to Load):</b>
             <ul className="mt-4">
               {gameList.length > 0 ? (
                 gameList.map((game, index) => (
@@ -184,9 +239,51 @@ const App = () => {
                   </li>
                 ))
               ) : (
-                <li>No saved games available</li>
+                <li>No saved boards available</li>
               )}
             </ul>
+
+            <div className="divider">Loaded Board</div>
+
+            {savedGame && (
+              <div>
+                <div className="mt-2">
+                  <span>Loaded Board: {savedGame.id}</span>
+                </div>
+                <div className="mt-2">
+                  <span>Board Size: {savedGame.grid?.width}x{savedGame.grid?.height}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={onGetFinalState}
+              className="btn py-2 px-4 rounded ml-2"
+              disabled={isPlaying || loading || !savedGame}
+            >
+              Get Final State
+            </button>
+            <label className="mr-2">Max Steps:
+            <input
+              type="number"
+              value={maxStepsForFinalState}
+              onChange={(e) => setMaxStepsForFinalState(Number(e.target.value))}
+              className="p-1 w-20 border border-gray-300 rounded-md shadow-sm"
+            />
+            </label>
+            <label>Enable Loop Source Detection? (slower)
+            <input
+              type="checkbox"
+              checked={enableLoopSourceDetection}
+              onChange={(e) => setEnableLoopSourceDetection(e.target.checked)}
+              className="form-checkbox h-5 w-5 text-blue-600"
+            />
+            </label>
+            {finalStateResult && (
+              <div className="alert alert-success mt-2">
+                <span>{finalStateResult}</span>
+              </div>
+            )}
 
           </div>
         </div>
@@ -198,8 +295,16 @@ const App = () => {
         )}
       </div>
 
+
       <div className="w-2/3 p-4">
-        <GameBoard grid={grid} />
+        {notificationMessage && (
+          <div className="toast toast-top toast-center">
+            <div className="alert alert-info">
+              <span>{notificationMessage}</span>
+            </div>
+          </div>
+        )}
+        <GameBoard grid={grid}/>
       </div>
     </div>
   );

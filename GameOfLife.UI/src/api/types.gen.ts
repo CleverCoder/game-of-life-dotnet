@@ -4,6 +4,7 @@ export type GetFinalStateResponse = {
     gameId?: (string) | null;
     grid?: Grid;
     stepCount?: number;
+    loopDetectStep?: (number) | null;
     errorMessage?: (string) | null;
 };
 
@@ -46,6 +47,7 @@ export type GetGameFinalStateData = {
     query?: {
         gameId?: string;
         includeIntArray?: boolean;
+        locateMatchOnLoop?: boolean;
         maxSteps?: number;
     };
 };

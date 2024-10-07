@@ -6,7 +6,7 @@ namespace GameOfLife.WebAPI.Algorithms;
 
 public class NaiveSolver(BitMatrix initialState) : SolverBase(initialState)
 {
-  private IBloomFilter bf = FilterBuilder.Build(1000, HashMethod.Murmur128BitsX64);
+  private IBloomFilter bf = FilterBuilder.Build(10000, HashMethod.Murmur128BitsX64);
   
   public override StepResult SolveNext()
   {
@@ -34,6 +34,7 @@ public class NaiveSolver(BitMatrix initialState) : SolverBase(initialState)
         }
       }
     }
+    this.CurrentState = nextState;
     
     if (!hasChanged)
     {
@@ -51,8 +52,6 @@ public class NaiveSolver(BitMatrix initialState) : SolverBase(initialState)
       return StepResult.LoopDetected;
     }
     this.bf.Add(bytes); // Add to bloom filter
-    
-    this.CurrentState = nextState;
     return StepResult.Unstable;
   }
 
@@ -82,5 +81,13 @@ public class NaiveSolver(BitMatrix initialState) : SolverBase(initialState)
     return neighbors;
   }
 
-   
+  // Some helpers added to determine orginal looped grid state
+
+  
+  // For detecting the first looped grid state, we add the bytes of the detected looped grid state
+  // so that we can find the original grid state that caused the loop.
+  public void AddBytesToBloomFilter(byte[] bytes)
+  {
+    this.bf.Add(bytes);
+  }
 }

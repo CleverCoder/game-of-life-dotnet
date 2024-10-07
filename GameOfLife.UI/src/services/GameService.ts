@@ -1,7 +1,8 @@
 import {
+  getGameFinalState, GetGameFinalStateResponse,
   getGameList, getGameLoad,
   getGridCreatePacked, Grid, postGameCreate,
-  postGridGenerateNext
+  postGridGenerateNext, SavedGame
 } from "../api";
 import {base64ToUint8Array, packGrid, uint8ArrayToBase64, unpackGrid} from "../utils/board-utils.ts";
 
@@ -65,17 +66,33 @@ export async function loadGameList(): Promise<string[]> {
   return response.data;
 }
 
-export async function loadGame(gameId: string): Promise<boolean[][] | undefined> {
-  const gameData = await getGameLoad({
+export async function loadGame(gameId: string): Promise<SavedGame | undefined> {
+  const response = await getGameLoad({
     query: {
       gameId: gameId,
     }
   });
 
-  if (!gameData.data || !gameData.data.grid || !gameData.data.grid.packedData) {
+  if (!response.data) {
     throw new Error('Invalid game data');
   }
 
-  const byteArray = base64ToUint8Array(gameData.data.grid.packedData);
-  return unpackGrid(byteArray, gameData.data.grid.width!, gameData.data.grid.height!);
+  return response.data;
+}
+
+
+export async function getFinalState(gameId: string, maxSteps: number, enableLoopSourceDetection: boolean): Promise<GetGameFinalStateResponse | undefined> {
+  const response = await getGameFinalState({
+    query: {
+      gameId: gameId,
+      maxSteps: maxSteps,
+      locateMatchOnLoop: enableLoopSourceDetection,
+    }
+  });
+
+  if (!response.data || !response.data.grid || !response.data.grid.packedData) {
+    throw new Error('Invalid game data');
+  }
+
+  return response.data;
 }

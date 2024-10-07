@@ -1,4 +1,5 @@
-﻿using GameOfLife.WebAPI.DTOs;
+﻿using GameOfLife.WebAPI.Algorithms;
+using GameOfLife.WebAPI.DTOs;
 using GameOfLife.WebAPI.Models;
 using GameOfLife.WebAPI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -58,8 +59,14 @@ public class GameController(ILogger<GameController> logger, GameService gameServ
         };
     }
 
+    
+    /// <summary>
+    /// Get the final state of a game after a number of steps, or until a stable state is reached, detecting if a loop is found.
+    /// </summary>
+    /// <param name="includeIntArray">Include an integer array of 0's and 1's for testing in the results</param>
+    /// <param name="locateMatchOnLoop">If a loop is found, re-runs the process to locate the match</param>
     [HttpGet("final-state")]
-    public GetFinalStateResponse GetFinalGameState([FromQuery] string gameId, [FromQuery] int maxSteps = 1000, [FromQuery] bool includeIntArray = false)
+    public GetFinalStateResponse GetFinalGameState([FromQuery] string gameId, [FromQuery] int maxSteps = 1000, [FromQuery] bool includeIntArray = false, [FromQuery] bool locateMatchOnLoop = false)
     {
         var gameState = gameService.LoadGame(gameId);
         if (gameState == null)
@@ -67,9 +74,9 @@ public class GameController(ILogger<GameController> logger, GameService gameServ
             throw new ArgumentException("Game not found");
         }
 
-        var result = gameService.AdvanceGenerations(gameState, maxSteps);
+        var result = gameService.AdvanceGenerations(gameState, maxSteps, locateMatchOnLoop);
 
-        var errorMessage = result switch
+        var errorMessage = result.StepResult switch
         {
             StepResult.Stable => null,
             StepResult.Unstable => "Game did not stabilize after max steps",
@@ -82,6 +89,7 @@ public class GameController(ILogger<GameController> logger, GameService gameServ
             GameId = gameId,
             StepCount = gameState.Iteration,
             ErrorMessage = errorMessage,
+            LoopDetectStep = result.OriginalStepForLoop,
             Grid = new Grid
             {
                 Width = gameState.CurrentGrid.Width,

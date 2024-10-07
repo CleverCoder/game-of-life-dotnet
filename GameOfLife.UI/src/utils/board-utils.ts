@@ -1,3 +1,13 @@
+export function unpackBase64Grid(b64EncodedBytes: string, width: number, height: number): boolean[][] {
+  const byteArray = base64ToUint8Array(b64EncodedBytes);
+  return unpackGrid(byteArray, height, width);
+}
+
+export function packGridToBase64(gridData: boolean[][]): string {
+  const byteArray = packGrid(gridData);
+  return uint8ArrayToBase64(byteArray);
+}
+
 // Convert a byte array representing the game grid to a 2D boolean grid [rows][cols].
 export function unpackGrid(byteArray: Uint8Array, rows: number, cols: number): boolean[][] {
   const grid: boolean[][] = [];

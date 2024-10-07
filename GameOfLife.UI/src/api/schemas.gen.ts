@@ -14,6 +14,11 @@ export const GetFinalStateResponseSchema = {
             type: 'integer',
             format: 'int32'
         },
+        loopDetectStep: {
+            type: 'integer',
+            format: 'int32',
+            nullable: true
+        },
         errorMessage: {
             type: 'string',
             nullable: true

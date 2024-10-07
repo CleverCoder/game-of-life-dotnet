@@ -7,6 +7,12 @@ using StackExchange.Redis;
 
 namespace GameOfLife.WebAPI.Services
 {
+    public class AdvanceGenerationsResult
+    {
+        public StepResult StepResult { get; set; }
+        public int? OriginalStepForLoop { get; set; }
+    }
+    
     public class GameService(ILogger<GameService> logger, IConnectionMultiplexer redis)
     {
         public string SaveGame(BitMatrix initialState)
@@ -72,7 +78,7 @@ namespace GameOfLife.WebAPI.Services
         
         // Advance the passed game state by the specified number of generations,
         // returning true or false on whether the game stabilized after the last generation.
-        public StepResult AdvanceGenerations(GameState gameState, int maxSteps)
+        public AdvanceGenerationsResult AdvanceGenerations(GameState gameState, int maxSteps, bool locateMatchOnLoop)
         {
             var solver = new NaiveSolver(gameState.CurrentGrid);
 
@@ -85,10 +91,34 @@ namespace GameOfLife.WebAPI.Services
                     break;
                 }
             }
+            
+            var result = new AdvanceGenerationsResult
+            {
+                StepResult = stepResult,
+                OriginalStepForLoop = null
+            };
+                        
+            // If we want to find the original grid state that caused the loop, we re-run the process, and since the
+            if (stepResult == StepResult.LoopDetected && locateMatchOnLoop)
+            {
+                logger.LogDebug("Loop detected, re-running to locate match");
+                
+                var newSolver = new NaiveSolver(gameState.CurrentGrid);
+                newSolver.AddBytesToBloomFilter(solver.CurrentState.ToByteArray());
+                
+                for (var i = 0; i < maxSteps; i++)
+                {
+                    if(newSolver.SolveNext() == StepResult.LoopDetected)
+                    {
+                        result.OriginalStepForLoop = newSolver.Iterations;
+                        break;
+                    }
+                }
+            }
 
             gameState.CurrentGrid = solver.CurrentState;
             gameState.Iteration = solver.Iterations;
-            return stepResult;
+            return result;
         }
 
         private string GenerateId()
