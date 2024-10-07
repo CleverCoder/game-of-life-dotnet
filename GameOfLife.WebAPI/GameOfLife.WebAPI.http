@@ -1,6 +1,6 @@
 ### Create a new 10x10 board as int array
 
-GET {{GameOfLife.WebAPI_BaseURL}}/grid/create-int-array?width=10&height=10&seed={{GameOfLife.RandomSeed}}
+GET {{GameOfLife.WebAPI_BaseURL}}/grid/create-bit-array?width=10&height=10&seed={{GameOfLife.RandomSeed}}
 
 > {%
     client.test("10x10 Grid Matches Expectation", function () {

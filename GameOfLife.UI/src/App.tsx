@@ -102,8 +102,7 @@ const App = () => {
       await onLoadGameList();
     }
 
-
-    await onLoadGameList();
+    await onLoadGame(response!);
   }
 
   const togglePlay = async () => {
